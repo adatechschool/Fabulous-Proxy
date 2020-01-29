@@ -1,36 +1,29 @@
-var sys = require("sys"),
-    http = require("http"),
-    url = require("url");
-
-function nope(response)
+function handleResponse(response)
 {
-    response.writeHead(404, "text/plain");
-    response.end("erreur de numéro quatre-cent quatre");
-}
+   var body = ''
 
-function writeChunk(chunk, request)
-{
-    request.write(chunk); 
+   response.on ("data", function (morceau) { body += (String(morceau)); });
+   response.on ("end", function () { console.log(body); })
 }
 
 function handleRequest(browser_request, browser_response)
 {
     var browser_url = url.parse(browser_request.url, true);
-    // if(!browser_url.query || !browser_url.query.url) return nope(browser_response);
-    var proxy_url = url.parse(browser_url.href);
+    console.log(browser_url);
     
-    var proxy_client = http.createClient(proxy_url.port || 80, proxy_url.hostname);
-    var proxy_request = proxy_client.request('GET', proxy_url.pathname || "/", {host : proxy_url.hostname});
-    proxy_request.end();
-
-    proxy_request.addListener('response', function(proxy_response)
+    var options =
     {
-        browser_response.writeHead(proxy_response.statusCode,proxy_response.headers);
-    });
+      hostname: browser_request.headers["host"],
+      port: browser_url.port || 80,
+      path: browser_url.path,
+      method: browser_request.method,
+      headers: browser_request.headers
+    };
+    
+    console.log (options)
 
-    proxy_response.addListener('data', writeChunk(chunk, browser_response));
-
-    proxy_response.addListener('end', function(){browser_response.end()});
+    var proxy_request = http.request(options, handleResponse);
+    proxy_request.end()
 }
 
 http.createServer(handleRequest).listen(2000);
